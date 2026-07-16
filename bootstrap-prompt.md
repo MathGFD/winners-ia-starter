@@ -6,18 +6,23 @@ binários, skills e o segundo cérebro no Obsidian.
 ---
 
 ```
-Clone o repositório https://github.com/MathGFD/winners-ia-starter e depois:
+Clone o repositório e rode o instalador (ele faz tudo — não precisa fazer os passos na mão):
 
-1. Rode o setup.sh dele (bash winners-ia-starter/setup.sh) e me acompanhe pelo passo a passo,
-   confirmando cada instalação.
-2. Instale as skills da pasta skills/ em ~/.claude/skills/.
-3. Monte um vault Obsidian com a estrutura PARA (0-Inbox, 1-Projetos, 2-Areas, 3-Recursos,
-   4-Arquivo, _Sistema/Wiki-LLM/raw e wiki) copiando o CLAUDE.md e o Home.md do vault-template/.
-4. No final, me diga em 3 linhas o que foi instalado, o que ficou pendente (chaves de API,
-   modelos pesados) e qual o primeiro comando que eu devo testar.
+    git clone https://github.com/MathGFD/winners-ia-starter
+    bash winners-ia-starter/setup.sh --yes --vault ~/segundo-cerebro
 
-Antes de instalar qualquer coisa via Homebrew, me avise e peça confirmação. Não invente
-chaves de API — se uma skill precisar, me diga qual e onde eu coloco.
+O setup.sh instala as skills em ~/.claude/skills/ e monta o vault Obsidian (estrutura PARA:
+0-Inbox, 1-Projetos, 2-Areas, 3-Recursos, 4-Arquivo, _Sistema/Wiki-LLM/raw e wiki) em
+~/segundo-cerebro, já com CLAUDE.md, Home.md e ONBOARDING.md.
+
+Me acompanhe pela saída do script e, no final, me diga em 3 linhas:
+1) o que foi instalado,
+2) o que ficou PENDENTE (o script lista os binários pendentes; some as chaves de API e modelos pesados),
+3) qual o primeiro comando que eu devo testar.
+
+Regras: os binários do Mac (whisper/yt-dlp/ffmpeg) são pesados e usam Homebrew — o script os
+deixa como PENDENTE de propósito. Me mostre o comando `brew install ...` que ele imprimir e
+pergunte antes de rodar. Não invente chaves de API — se uma skill precisar, diga qual e onde eu coloco.
 ```
 
 ---

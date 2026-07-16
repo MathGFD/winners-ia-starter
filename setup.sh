@@ -11,6 +11,26 @@ warn(){ printf "${YELLOW}!! ${NC} %s\n" "$1"; }
 err(){ printf "${RED}xx ${NC} %s\n" "$1"; }
 ask(){ read -r -p "$1 [s/N] " r; [[ "$r" =~ ^[sS]$ ]]; }
 
+# ---------- flags / interatividade ----------
+# Rodado por um agente (Claude Code) ou via pipe, o stdin não é um terminal:
+# nenhum `read` recebe resposta e tudo era pulado em silêncio. Aqui detectamos isso
+# e assumimos os defaults seguros (skills + vault). Binários pesados (brew) NUNCA
+# instalam sozinhos — viram PENDENTE no resumo final.
+ASSUME_YES=false
+VAULT_PATH="$HOME/segundo-cerebro"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --yes|-y)     ASSUME_YES=true ;;
+    --vault)      shift; VAULT_PATH="${1:?--vault precisa de um caminho}" ;;
+    --vault=*)    VAULT_PATH="${1#*=}" ;;
+    *)            warn "flag ignorada: $1" ;;
+  esac
+  shift
+done
+[[ ! -t 0 ]] && ASSUME_YES=true          # stdin não é terminal → modo não-interativo
+INTERACTIVE=true; [[ "$ASSUME_YES" == true ]] && INTERACTIVE=false
+VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
+
 echo ""
 say "winners-ia-starter — setup do ambiente de IA"
 echo ""
@@ -33,24 +53,24 @@ else
 fi
 
 # ---------- 3. Binários (Mac) ----------
+MISSING_BINS=()
 if [[ "$INSTALL_BINS" == true ]]; then
   if ! command -v brew >/dev/null 2>&1; then
-    warn "Homebrew não instalado."
-    if ask "Instalar o Homebrew agora? (abre o instalador oficial)"; then
+    if [[ "$INTERACTIVE" == true ]] && ask "Homebrew não instalado. Instalar agora? (instalador oficial)"; then
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     else
-      warn "Pulei o Homebrew. Sem ele os binários não instalam."
+      warn "Sem Homebrew — os binários ficam pendentes."
     fi
   fi
-  if command -v brew >/dev/null 2>&1; then
-    for b in ffmpeg yt-dlp whisper-cpp; do
-      if brew list "$b" >/dev/null 2>&1; then
-        say "$b já instalado"
-      elif ask "Instalar $b?"; then
-        brew install "$b"
-      fi
-    done
-  fi
+  for b in ffmpeg yt-dlp whisper-cpp; do
+    if command -v brew >/dev/null 2>&1 && brew list "$b" >/dev/null 2>&1; then
+      say "$b já instalado"
+    elif [[ "$INTERACTIVE" == true ]] && command -v brew >/dev/null 2>&1 && ask "Instalar $b?"; then
+      brew install "$b"
+    else
+      MISSING_BINS+=("$b")   # não-interativo ou sem brew: não instala calado, reporta no fim
+    fi
+  done
 fi
 
 # ---------- 4. Skills do Claude Code ----------
@@ -74,10 +94,18 @@ fi
 
 # ---------- 5. Segundo cérebro (Obsidian / PARA) ----------
 echo ""
-if ask "Montar o segundo cérebro (vault PARA) agora?"; then
-  read -r -p "Caminho do vault [~/segundo-cerebro]: " VPATH
-  VPATH="${VPATH:-$HOME/segundo-cerebro}"
-  VPATH="${VPATH/#\~/$HOME}"
+BUILD_VAULT=false
+if [[ "$INTERACTIVE" == true ]]; then
+  if ask "Montar o segundo cérebro (vault PARA) agora?"; then
+    read -r -p "Caminho do vault [$VAULT_PATH]: " _v
+    VAULT_PATH="${_v:-$VAULT_PATH}"; VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
+    BUILD_VAULT=true
+  fi
+else
+  BUILD_VAULT=true   # não-interativo: monta no default (ou no --vault passado)
+fi
+if [[ "$BUILD_VAULT" == true ]]; then
+  VPATH="$VAULT_PATH"
   mkdir -p "$VPATH"/{0-Inbox,1-Projetos,2-Areas,3-Recursos,4-Arquivo}
   mkdir -p "$VPATH"/_Sistema/Wiki-LLM/{raw,wiki}
   # arquivos-semente (não sobrescreve o que já existe)
@@ -92,6 +120,12 @@ fi
 
 # ---------- 6. Fim ----------
 echo ""
+if [[ ${#MISSING_BINS[@]} -gt 0 ]]; then
+  warn "BINÁRIOS PENDENTES (não instalo sozinho — são pesados e usam brew): ${MISSING_BINS[*]}"
+  warn "  Instala quando quiser:  brew install ${MISSING_BINS[*]}"
+  warn "  Sem eles /transcribe e /gerador-de-clipes-* não rodam."
+  echo ""
+fi
 say "Setup concluído."
 echo ""
 echo "PRÓXIMOS PASSOS:"
